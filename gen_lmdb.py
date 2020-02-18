@@ -46,17 +46,23 @@ for i in pos_img_name_list:
 for i in neg_img_name_list:
     neg_img_list.append(os.path.join(NEG_IMG_PATH, i))
 whole_img_list = pos_img_list + neg_img_list
+
+per_img_size = sum([cv2.imread(i, cv2.IMREAD_UNCHANGED).nbytes for i in whole_img_list[:100]])/100
 total_num = len(whole_img_list)
+
+# multiplying 5 for making sure large enough map size
+map_size = 5*per_img_size*total_num
+
 counter = 0
 s_t = time.time()
 lock = threading.Lock()
 
+env = lmdb.open(LMDB_DIR, map_size=map_size)
 for ith_batch in range(total_num // BATCH_SIZE + 1):
     img_list = whole_img_list[ith_batch*BATCH_SIZE: (ith_batch+1)*BATCH_SIZE]
     if len(img_list) == 0:
         break;
     threads = []
-    env = lmdb.open(LMDB_DIR, map_size=4096000000000)
     txn = env.begin(write=True)
     for i in range(THREAD_NUM):
         t = threading.Thread(target=gen_lmdb, args=(img_list[i*(BATCH_SIZE//THREAD_NUM): (i+1)*(BATCH_SIZE//THREAD_NUM)], ))
@@ -66,7 +72,7 @@ for ith_batch in range(total_num // BATCH_SIZE + 1):
     for t in threads:
         t.join()
     txn.commit()
-    env.close()
+env.close()
 
 print("Finish generating lmdb, cost {:.1f}s".format(time.time()-s_t))
 
