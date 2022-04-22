@@ -22,12 +22,17 @@ def gen_lmdb(img_path_list):
             with lock:
                 txn.put(img_file.encode(), image_bin)
                 """read img from lmdb
-                env_db = lmdb,open(LMDB_DIR)
-                txn = env.begin()
+                env_db = lmdb.open(LMDB_DIR)
+                txn = env_db.begin()
                 # specify a image name in the database
-                value = txn.read(IMG_NAME.encode())
-                img_buff = np,frombuffer(value, dtype=np.uint8)
+                value = txn.get(IMG_NAME.encode())
+                # for opencv
+                img_buff = np.frombuffer(value, dtype=np.uint8)
                 img = cv2.imdecode(img_buff, cv2.IMREAD_COLOR)
+                # for PIL
+                bytes_io = bytearray(value)
+                from PIL import Image
+                img = Image.open(BytesIO(bytes_io))
                 """
                 counter += 1
                 if counter % 5000 == 0:
